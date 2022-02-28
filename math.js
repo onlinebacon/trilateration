@@ -102,9 +102,9 @@ class Vec3Type extends Float64Array {
 		return dst;
 	}
 	scale(value, dst = this) {
-		this[0] = dst[0]*value;
-		this[1] = dst[1]*value;
-		this[2] = dst[2]*value;
+		dst[0] = this[0]*value;
+		dst[1] = this[1]*value;
+		dst[2] = this[2]*value;
 		return dst;
 	}
 	get x() { return this[0]; }
