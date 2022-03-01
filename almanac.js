@@ -61,7 +61,8 @@ const stars = `
 	Rigil Kent.: 14h41m12.78s/-60°54'49.8"
 	Sabik: 17h11m40.60s/-15°45'08.8"
 	Scheat: 23h04m51.75s/+28°12'05.4"
-	Schedar:
+	Schedar: 0h41m46.44s/+56°39'18.0"
+	Shedar: 0h41m46.44s/+56°39'18.0"
 	Shaula: 17h35m08.90s/-37°07'11.6"
 	Sirius: 6h46m06.19s/-16°44'48.8"
 	Spica: 13h26m22.34s/-11°16'41.1"
