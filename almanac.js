@@ -1,4 +1,4 @@
-const ALIGN_TIME = new Date(`2022-07-01 05:22:59.9 +0`);
+const ALIGN_TIME = new Date(`2022-07-01T05:22:59.9Z`);
 const SID_DAY = 86164.09053820801;
 const MS_TO_DEGREE = 360/1000/SID_DAY;
 const HOUR_TO_DEGREE = 360/24;

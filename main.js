@@ -95,7 +95,7 @@ const example = `
 	ALT: +35°50'16"
 
 	Star: Vega
-	Time: 2022-01-15 01:13:20 UTC-4
+	Time: 2022-01-15 01:13:20 -4:00
 	ALT: 58 15.6
 
 `.trim().replace(/[\t\x20]*\n[\t\x20]*/g, '\n');
@@ -110,19 +110,38 @@ const addPaperLine = (line) => {
 };
 
 const timeRegex = /^(\d+-\d+-\d+\s+\d+:\d+(:\d+(\.\d+)?)?(\s+(UTC|GMT)?\s*[\-+]\d+(:\d+)?)?)$/i;
-const parseTime = (time) => {
-	if (!timeRegex.test(time)) {
+const parseTime = str => {
+	str = str.trim();
+	const sign = str.startsWith('-') ? -1 : 1;
+	str = str.replace(/^[+\-]/, '');
+	return sign*(
+		str
+			.trim()
+			.split(/\s*:\s*/)
+			.map((val, i) => val*Math.pow(60, -i))
+			.reduce((a, b) => a + b)
+	);
+};
+const parseDateTime = (str) => {
+	str = str.trim().replace(/\s+/, '\x20');
+	if (!timeRegex.test(str)) {
 		throw `
-			Bad time format
+			Bad str format
 			Check out this example:
 			2022-01-22 21:32:50 +2:30
 		`;
 	}
-	const date = new Date(time);
-	if (isNaN(date*1)) {
+	let [ date, time, zone ] = str.replace(/GMT|UTC/ig, '\x20').trim().split(/\s+/);
+	let obj = new Date(`${date}T${time}Z`);
+	if (isNaN(obj*1)) {
 		throw 'This date/time doesn\'t seem to exist';
 	}
-	return date;
+	if (zone) {
+		zone = parseTime(zone);
+		const ms = zone*60*60*1000;
+		obj = new Date(obj*1 - ms);
+	}
+	return obj;
 };
 
 const parseRa = (ra) => {
@@ -192,7 +211,7 @@ const processStar = (star) => {
 	if (!time?.trim()) {
 		throw 'Missing the time of the measurement';
 	}
-	time = parseTime(time);
+	time = parseDateTime(time);
 	let ariesGHA = Almanac.calcAriesGHA(time);
 	addPaperLine(`GHA Aries = ${strAngle(ariesGHA)}`)
 	if (radec == null) {
