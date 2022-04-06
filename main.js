@@ -105,8 +105,10 @@ const clearPaper = () => {
 };
 
 const addPaperLine = (line) => {
-	paper.innerText += line.toUpperCase();
+	line = line.toUpperCase();
+	paper.innerText += line;
 	paper.innerHTML += '<br>';
+	return line;
 };
 
 const timeRegex = /^(\d+-\d+-\d+\s+\d+:\d+(:\d+(\.\d+)?)?(\s+(UTC|GMT)?\s*[\-+]\d+(:\d+)?)?)$/i;
@@ -313,11 +315,12 @@ const doCalculations = () => {
 	}
 	result = trilaterate(args);
 	updateLink3D();
-	addPaperLine(`result = ${
+	const res = addPaperLine(`result = ${
 		strLat(result[0]*RAD_TO_DEG)
 	}, ${
 		strLong(result[1]*RAD_TO_DEG)
 	}`);
+	window.onResult?.(res.split('=')[1].trim());
 };
 
 const clearLink3D = () => {
@@ -439,6 +442,8 @@ const updateCalculations = () => {
 	}
 	updateMap();
 };
+
+window.updateCalculations = updateCalculations;
 
 window.addEventListener('load', async () => {
 	inputData = document.querySelector('textarea');
