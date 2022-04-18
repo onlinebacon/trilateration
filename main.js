@@ -1,6 +1,7 @@
 import * as Almanac from './almanac.js';
 import * as Maps from './maps.js';
-import { trilaterate, getCoordCircle } from './math.js';
+import { getCoordCircle } from './math.js';
+import trilaterate from '../jslib/trilaterate-sphere.js';
 
 let inputData;
 let inputDecimals;
@@ -12,7 +13,7 @@ let useDecimals = false;
 let [ currentMap ] = Maps.all;
 
 const args = [];
-let result = null;
+let results = [];
 const NM_TO_MI = 1852/1609.344;
 const DEG_TO_RAD = Math.PI/180;
 const RAD_TO_DEG = 180/Math.PI;
@@ -89,10 +90,6 @@ const example = `
 	Star: Antares
 	Time: 2022-01-15 00:57:38 GMT-4
 	ALT: 50.8687
-
-	Star: Arcturus
-	Time: 2022-01-15 01:07:06 UTC-4
-	ALT: +35°50'16"
 
 	Star: Vega
 	Time: 2022-01-15 01:13:20 -4:00
@@ -256,7 +253,7 @@ const processStar = (star) => {
 };
 
 const mountQuery = (args) => {
-	let query = 'o=' + result.map(v => (v*RAD_TO_DEG).toFixed(3)*1).join(',');
+	let query = 'o=' + results[0].map(v => (v*RAD_TO_DEG).toFixed(3)*1).join(',');
 	let count = 0;
 	for (const { gp, arc } of args) {
 		let name = String.fromCharCode(97 + count++);
@@ -268,7 +265,7 @@ const mountQuery = (args) => {
 };
 
 const doCalculations = () => {
-	result = null;
+	results.length = 0;
 	args.length = 0;
 	clearLink3D();
 	let lines = inputData.value.toLowerCase().trim().split(/\s*\n\s*/);
@@ -311,13 +308,20 @@ const doCalculations = () => {
 	if (current_star != null) {
 		processStar(current_star);
 	}
-	result = trilaterate(args);
+	results = trilaterate({
+		points: args.map(arg => {
+			const { gp, arc } = arg;
+			return [ ...gp, arc ];
+		}),
+	});
 	updateLink3D();
-	addPaperLine(`result = ${
-		strLat(result[0]*RAD_TO_DEG)
-	}, ${
-		strLong(result[1]*RAD_TO_DEG)
-	}`);
+	for (let result of results) {
+		addPaperLine(`result = ${
+			strLat(result[0]*RAD_TO_DEG)
+		}, ${
+			strLong(result[1]*RAD_TO_DEG)
+		}`);
+	}
 };
 
 const clearLink3D = () => {
@@ -418,7 +422,7 @@ const updateMap = () => currentMap.getImage().then(img => {
 	for (let { gp, arc } of args) {
 		makeSpotAt(...gp);
 	}
-	if (result != null) {
+	for (let result of results) {
 		drawResult(...result);
 	}
 });
