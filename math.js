@@ -1,4 +1,5 @@
 import coordClusteredSearch from './coord-clustered-search.js';
+import { get2CirclesIntersections } from '../jslib/sphere-trilateration.js';
 
 const { PI, sin, cos, asin, acos, sqrt } = Math;
 const D180 = PI;
@@ -313,6 +314,13 @@ export const trilaterationErrorFunction = (args) => {
 };
 
 export const trilaterate = (args) => {
-	const calcError = trilaterationErrorFunction(args);
-	return findMinErrorCoord3(calcError);
+	if (args.length !== 2) {
+		const calcError = trilaterationErrorFunction(args);
+		return [ findMinErrorCoord3(calcError) ];
+	}
+	const [ a, b ] = args;
+	return get2CirclesIntersections(
+		a.gp, a.arc,
+		b.gp, b.arc,
+	);
 };

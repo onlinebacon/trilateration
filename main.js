@@ -1,5 +1,6 @@
 import * as Almanac from './almanac.js';
 import * as Maps from './maps.js';
+import * as Angles from '../jslib/angles.js';
 import { trilaterate, getCoordCircle } from './math.js';
 
 let inputData;
@@ -12,29 +13,17 @@ let useDecimals = false;
 let [ currentMap ] = Maps.all;
 
 const args = [];
-let result = null;
+let results = [];
 const NM_TO_MI = 1852/1609.344;
 const DEG_TO_RAD = Math.PI/180;
 const RAD_TO_DEG = 180/Math.PI;
 
-const strFloat = (val, decs = 4) => (val*1).toFixed(decs)*1 + '';
+const strFloat = (val, decs = 3) => (val*1).toFixed(decs)*1 + '';
 const strAngle = (val) => {
 	if (useDecimals) {
-		return strFloat(val, 4);
+		return strFloat(val);
 	}
-	const sign = val >= 0 ? '' : '-';
-	const totalSec = Math.round(Math.abs(val * 3600));
-	const s = totalSec % 60;
-	const totalMin = Math.round((totalSec - s)/60);
-	const m = totalMin % 60;
-	const h = Math.round((totalMin - m)/60);
-	return sign + `${
-		h
-	}°${
-		m.toString().padStart(2, '0')
-	}'${
-		s.toString().padStart(2, '0')
-	}"`
+	return Angles.stringify(val);
 };
 const strLat = (val) => {
 	let str = strAngle(val);
@@ -193,16 +182,12 @@ const parseAlt = (alt) => {
 	if (floatRegex.test(alt)) {
 		return Number(alt);
 	}
-	if (!degreeRegexes.find(regex => regex.test(alt))) {
-		throw `
-			Bad altitude angle format "${alt}"
-			Check out the examples below:
-			26 28 43.2
-			38°48'09.5"
-			13.94217
-		`;
+	if (degreeRegexes.find(regex => regex.test(alt))) {
+		return parseDegrees(alt);
 	}
-	return parseDegrees(alt);
+	const res = Angles.parse(alt);
+	if (res !== null) return res;
+	throw `Bad altitude angle format "${alt}"`;
 };
 
 const processStar = (star) => {
@@ -232,22 +217,13 @@ const processStar = (star) => {
 	}
 	alt = parseAlt(alt);
 	let arc = 90 - alt;
-	addPaperLine(`alt = ${
-		strFloat(alt)
-	}° // 90° - ${
-		strFloat(alt)
-	}° = ${
-		strFloat(arc)
-	}°`);
+	addPaperLine(`zenith = 90 - ${
+		strAngle(alt)
+	} = ${
+		strAngle(arc)
+	}`);
 	let nms = arc*60;
 	let miles = nms*NM_TO_MI;
-	addPaperLine(`${
-		strFloat(arc)
-	}*60 nm = ${
-		strFloat(nms, 1)
-	} nm = ${
-		strFloat(miles, 1)
-	} mi`);
 	addPaperLine('');
 	args.push({
 		gp: [ lat*DEG_TO_RAD, long*DEG_TO_RAD ],
@@ -256,7 +232,7 @@ const processStar = (star) => {
 };
 
 const mountQuery = (args) => {
-	let query = 'o=' + result.map(v => (v*RAD_TO_DEG).toFixed(3)*1).join(',');
+	let query = 'o=' + results[0].map(v => (v*RAD_TO_DEG).toFixed(3)*1).join(',');
 	let count = 0;
 	for (const { gp, arc } of args) {
 		let name = String.fromCharCode(97 + count++);
@@ -268,7 +244,7 @@ const mountQuery = (args) => {
 };
 
 const doCalculations = () => {
-	result = null;
+	results = [];
 	args.length = 0;
 	clearLink3D();
 	let lines = inputData.value.toLowerCase().trim().split(/\s*\n\s*/);
@@ -311,13 +287,15 @@ const doCalculations = () => {
 	if (current_star != null) {
 		processStar(current_star);
 	}
-	result = trilaterate(args);
+	results = trilaterate(args);
 	updateLink3D();
-	addPaperLine(`result = ${
-		strLat(result[0]*RAD_TO_DEG)
-	}, ${
-		strLong(result[1]*RAD_TO_DEG)
-	}`);
+	for (let result of results) {
+		addPaperLine(`result = ${
+			strLat(result[0]*RAD_TO_DEG)
+		}, ${
+			strLong(result[1]*RAD_TO_DEG)
+		}`);
+	}
 };
 
 const clearLink3D = () => {
@@ -418,7 +396,7 @@ const updateMap = () => currentMap.getImage().then(img => {
 	for (let { gp, arc } of args) {
 		makeSpotAt(...gp);
 	}
-	if (result != null) {
+	for (let result of results) {
 		drawResult(...result);
 	}
 });
