@@ -148,7 +148,7 @@ const setters = {
 		let [ ra, dec ] = arr.map(Angles.parse);
 		if (ra == null) throw `Invalid format for right ascension "${arr[0]}"`;
 		if (dec == null) throw `Invalid format for declination "${arr[1]}"`;
-		return [ ra, dec ];
+		ctx.data.radec = [ ra, dec ];
 	},
 	ref: (ctx, val) => {
 		val = val.toLowerCase();
