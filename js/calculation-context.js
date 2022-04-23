@@ -13,7 +13,7 @@ const months = [
 ];
 
 const dtToTimestamp = (dt) => {
-	const { year, month, day, hour, min, sec = 0, timezone } = dt;
+	const { year, month, day, hour, min, sec = 0, timezone = '+00:00' } = dt;
 	const values = [ year, month, day, hour, min, sec, timezone ];
 	if (values.includes(undefined)) {
 		return new Date('x');
