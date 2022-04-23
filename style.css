@@ -10,6 +10,7 @@ body {
 textarea {
 	border: none;
 	background-color: #202020;
+	font-size: 12px;
 	border-radius: 2px;
 	padding: 10px;
 	color: #ddd;
@@ -21,9 +22,7 @@ textarea {
 #paper {
 	background-color: #ba9;
 	color: #642;
-	font-family: 'Caveat', cursive;
-	font-weight: bold;
-	font-size: 18px;
+	font-size: 14px;
 	padding: 10px 20px;
 	margin-top: 10px;
 	box-shadow: -5px 5px 20px #000;
@@ -51,7 +50,6 @@ textarea {
 	margin-top: 20px;
 	color: #ccc;
 	font-size: 32px;
-	font-family: 'Architects Daughter', cursive;
 }
 #canvas {
 	margin-top: 20px;
@@ -64,7 +62,6 @@ canvas {
 	color: #ccc;
 	font-size: 24px;
 	text-align: left;
-	font-family: 'Architects Daughter', cursive;
 }
 a {
 	font-size: 12px;
