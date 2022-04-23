@@ -1,6 +1,6 @@
-let usingDecimals = false;
+import * as Angles from '../../jslib/angles.js';
 
-import * as Angles from '../jslib/angles.js';
+let usingDecimals = false;
 
 export const angle = (val) => {
 	if (usingDecimals) return val.toFixed(3)*1 + '';

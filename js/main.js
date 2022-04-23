@@ -1,7 +1,7 @@
 import * as Maps from './maps.js';
 import * as FormatAngles from './format-angle.js';
 import { getCoordCircle } from './math.js';
-import CalculationContext from './CalculationContext.js';
+import CalculationContext from './calculation-context.js';
 
 let inputData;
 let inputDecimals;

@@ -3,7 +3,7 @@ import loadImage from './load-image.js';
 const { PI, sin, cos, tan, log } = Math;
 const TAU = PI*2;
 
-const equirectangularImgPromise = loadImage('equirectangular.png');
+const equirectangularImgPromise = loadImage('img/equirectangular.png');
 export const equirectangular = {
 	id: 'equirectangular',
 	name: 'Equirectangular',
@@ -14,7 +14,7 @@ export const equirectangular = {
 	],
 };
 
-const azimuthalImgPromise = loadImage('azimuthal.png');
+const azimuthalImgPromise = loadImage('img/azimuthal.png');
 export const azimuthal = {
 	id: 'azimuthal',
 	name: 'Azimuthal Equidistant',
@@ -28,7 +28,7 @@ export const azimuthal = {
 	},
 };
 
-const mercatorImgPromise = loadImage('mercator.png');
+const mercatorImgPromise = loadImage('img/mercator.png');
 export const mercator = {
 	id: 'mercator',
 	name: 'Mercator',
@@ -39,7 +39,7 @@ export const mercator = {
 	],
 };
 
-const gallPetersImgPromise = loadImage('gallpeters.png');
+const gallPetersImgPromise = loadImage('img/gallpeters.png');
 export const gallPeters = {
 	id: 'gallPeters',
 	name: 'Gall-Peters',

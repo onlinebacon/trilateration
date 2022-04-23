@@ -1,5 +1,6 @@
+import { get2CirclesIntersections } from '../../jslib/sphere-trilateration.js';
+
 import coordClusteredSearch from './coord-clustered-search.js';
-import { get2CirclesIntersections } from '../jslib/sphere-trilateration.js';
 
 const { PI, sin, cos, asin, acos, sqrt } = Math;
 const D180 = PI;

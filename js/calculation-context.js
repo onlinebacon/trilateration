@@ -1,7 +1,8 @@
-import * as Angles from '../jslib/angles.js';
+import * as Angles from '../../jslib/angles.js';
+import * as Almanac from '../../jslib/almanac-2022.js';
+import * as Corrections from '../../jslib/cel-nav-corrections.js';
+
 import * as FormatAngle from './format-angle.js';
-import * as Almanac from '../jslib/almanac-2022.js';
-import * as Corrections from '../jslib/cel-nav-corrections.js';
 import { trilaterate } from './math.js';
 
 const TO_RAD = Math.PI/180;
