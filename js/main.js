@@ -48,19 +48,18 @@ const addPaperLine = (line) => {
 };
 
 const mountQuery = (args) => {
-	let query = 'o=' + results[0].map(v => (v*RAD_TO_DEG).toFixed(3)*1).join(',');
+	let query = 'o=' + results[0].map(v => (v*RAD_TO_DEG).toFixed(5)*1).join(',');
 	let count = 0;
 	for (const { gp, arc } of args) {
 		let name = String.fromCharCode(97 + count++);
 		query += '&' + name + '=';
-		query += gp.map(v => (v*RAD_TO_DEG).toFixed(3)*1).join(',');
-		query += ',' + (arc*RAD_TO_DEG).toFixed(3)*1;
+		query += gp.map(v => (v*RAD_TO_DEG).toFixed(5)*1).join(',');
+		query += ',' + (arc*RAD_TO_DEG).toFixed(5)*1;
 	}
 	return query.substring(0, query.length - 1);
 };
 
 const doCalculations = () => {
-	args.length = 0;
 	clearLink3D();
 	let lines = inputData.value.trim().split(/\s*\n\s*/);
 	if (lines.length === 1 && lines[0] === '') {
@@ -72,6 +71,7 @@ const doCalculations = () => {
 	}
 	context.finish();
 	results = context.results;
+	args.length = 0;
 	args.push(...context.sights);
 	updateLink3D();
 };
