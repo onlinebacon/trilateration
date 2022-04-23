@@ -72,8 +72,8 @@ const doCalculations = () => {
 	}
 	context.finish();
 	results = context.results;
-	updateLink3D();
 	args.push(...context.sights);
+	updateLink3D();
 };
 
 const clearLink3D = () => {
