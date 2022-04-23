@@ -142,12 +142,12 @@ const setters = {
 		const height = heightFormat.parse(val);
 		ctx.data.height = height;
 	},
-	radec: (ctx, val) => {
+	'ra/dec': (ctx, val) => {
 		const arr = val.split(/\s*\/\s*/);
 		if (arr.length !== 2) throw `Invalid format for RA/DEC "${val}"`;
 		let [ ra, dec ] = arr.map(Angles.parse);
 		if (ra == null) throw `Invalid format for right ascension "${arr[0]}"`;
-		if (dec == null) throw `Invalid format for declination "${arr[0]}"`;
+		if (dec == null) throw `Invalid format for declination "${arr[1]}"`;
 		return [ ra, dec ];
 	},
 	ref: (ctx, val) => {
