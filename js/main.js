@@ -22,6 +22,7 @@ const example = `
 	date: March 28, 2022
 	zone: -5
 	ref: standard
+	height: 1 ft
 
 	star: procyon
 	time: 00:19:51
