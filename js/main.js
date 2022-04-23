@@ -42,8 +42,7 @@ const clearPaper = () => {
 };
 
 const addPaperLine = (line) => {
-	// paper.innerText += line;
-	paper.innerText += line.toUpperCase();
+	paper.innerText += line;
 	paper.innerHTML += '<br>';
 };
 

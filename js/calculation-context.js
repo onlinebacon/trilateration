@@ -188,7 +188,7 @@ class CalculationContext {
 		const timestamp = dtToTimestamp(dt);
 		if (isNaN(timestamp*1)) throw `Invalid date`;
 		const ariesGHA = Almanac.getAriesGHAAt(timestamp);
-		log?.(`GHA of aries = ${FormatAngle.angle(ariesGHA)}`);
+		log?.(`GHA of Aries = ${FormatAngle.angle(ariesGHA)}`);
 		const gha = (ariesGHA + sha)%360;
 		log?.(`GHA of ${name} = ${FormatAngle.angle(gha)}`);
 		let lat = dec;
@@ -220,7 +220,7 @@ class CalculationContext {
 				alt = corrected;
 			}
 			zenith = 90 - alt;
-			log?.(`Zenith = 90° - ${FormatAngle.angle(alt)} = ${FormatAngle.angle(zenith)}`);
+			log?.(`zenith = 90° - ${FormatAngle.angle(alt)} = ${FormatAngle.angle(zenith)}`);
 		} else if (zenith != null) {
 			if (refraction === 'standard') {
 				const dif = Corrections.refraction(90 - zenith);
