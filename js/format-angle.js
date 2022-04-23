@@ -10,9 +10,9 @@ export const lat = (val) => {
 	if (usingDecimals) return val.toFixed(3)*1 + '';
 	val = angle(val);
 	if (val[0] === '-') {
-		val = val.substring(1) + 'N';
+		val = val.substring(1) + 'S';
 	} else {
-		val += 'S';
+		val += 'N';
 	}
 	return val;
 };
