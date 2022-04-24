@@ -2,6 +2,7 @@ import * as Angles from '../../jslib/angles.js';
 import * as Almanac from '../../jslib/almanac-2022.js';
 import * as Corrections from '../../jslib/cel-nav-corrections.js';
 import { trilaterate } from '../../jslib/sphere-trilateration.js';
+import { calcDist } from '../../jslib/sphere-math.js';
 
 import * as FormatAngle from './format-angle.js';
 
@@ -100,6 +101,29 @@ const heightFormat = {
 	},
 };
 
+const nsRegex = /^[ns]|[ns]$/i;
+const ewRegex = /^[ew]|[ew]$/i;
+const parseCoord = (str) => {
+	const pair = str.split(/\s*,\s*/);
+	if (pair.length !== 2) return null;
+	let [ lat, lon ] = pair;
+	if (nsRegex.test(lat)) {
+		let [ sign ] = lat.match(nsRegex);
+		lat = lat.replace(nsRegex, '').trim();
+		if (sign.toLowerCase() == 's') lat = '-' + lat;
+	}
+	if (ewRegex.test(lon)) {
+		let [ sign ] = lon.match(ewRegex);
+		lon = lon.replace(ewRegex, '').trim();
+		if (sign.toLowerCase() == 'w') lon = '-' + lon;
+	}
+	lat = Angles.parse(lat);
+	if (lat == null) return null;
+	lon = Angles.parse(lon);
+	if (lon == null) return null;
+	return [ lat*TO_RAD, lon*TO_RAD ];
+};
+
 const setters = {
 	body: (ctx, val) => {
 		const star = Almanac.lookup(val) ?? val;
@@ -128,13 +152,9 @@ const setters = {
 		ctx.compileSight();
 	},
 	alt: (ctx, val) => {
-		if (/^([+\-]\s*)?\d+(\.\d+)?$/.test(val)) {
-			ctx.data.alt = Number(val);
-		} else {
-			const alt = Angles.parse(val);
-			if (alt == null) throw `Invalid format for altitude "${val}"`;
-			ctx.data.alt = alt;
-		}
+		const alt = Angles.parse(val);
+		if (alt == null) throw `Invalid format for altitude "${val}"`;
+		ctx.data.alt = alt;
 		ctx.compileSight();
 	},
 	height: (ctx, val) => {
@@ -154,6 +174,12 @@ const setters = {
 		val = val.toLowerCase();
 		if (val !== 'standard' && val !== 'std') throw `Invalid format for refraction "${val}"`;
 		ctx.data.refraction = 'standard';
+	},
+	refraction: (...args) => setters.ref(...args),
+	compare: (ctx, val) => {
+		const coord = parseCoord(val);
+		if (coord == null) throw `Invalid format for coordinate "${val}"`;
+		ctx.data.compare = coord;
 	},
 };
 
@@ -256,10 +282,23 @@ class CalculationContext {
 	finish() {
 		if (this.started) this.compileSight();
 		const results = trilaterate(this.sights.map(({ gp, arc }) => [ ...gp, arc ]));
+		const { compare } = this.data;
 		this.results = results;
-		for (let result of results) {
+		for (let i=0; i<results.length; ++i) {
+			let label = 'result';
+			if (results.length > 1) {
+				label = i + 1 + 'º ' + label;
+			}
+			const result = results[i];
 			const [ lat, lon ] = result;
-			this.log(`result = ${ FormatAngle.lat(lat/TO_RAD) }, ${ FormatAngle.lon(lon/TO_RAD) }`);
+			const coord = `${ FormatAngle.lat(lat/TO_RAD) }, ${ FormatAngle.lon(lon/TO_RAD) }`;
+			if (compare) {
+				console.log([...compare, ...result].map(x=>x/TO_RAD));
+				const off = (calcDist(compare, result)*3958.756).toPrecision(2)*1;
+				this.log(`${label} = ${coord} (${off} miles off)`);
+			} else {
+				this.log(`${label} = ${coord}`);
+			}
 		}
 		return this;
 	}
