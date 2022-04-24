@@ -176,6 +176,7 @@ class CalculationContext {
 		let name;
 		if (typeof body === 'string') {
 			if (!radec) throw `Unkown celestial body "${body}", please provide the RA/DEC`;
+			name = body;
 		} else {
 			let { ra, dec } = body;
 			name = body.names[0];
