@@ -198,7 +198,7 @@ class CalculationContext {
 	}
 	compileSight() {
 		const { data, log } = this;
-		let { body, radec, dt, alt, height, zenith, refraction } = data;
+		let { body, radec, dt, alt, height, zenith, refraction, compare } = data;
 		let name;
 		if (typeof body === 'string') {
 			if (!radec) throw `Unkown celestial body "${body}", please provide the RA/DEC`;
@@ -264,7 +264,7 @@ class CalculationContext {
 		} else {
 			throw `Missing alt/zenith for ${name}`;
 		}
-		this.data = { dt, height, refraction };
+		this.data = { dt, height, refraction, compare };
 		this.started = false;
 		this.sights.push({ gp: [ lat*TO_RAD, lon*TO_RAD ], arc: zenith*TO_RAD });
 		log?.('');
