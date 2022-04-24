@@ -68,6 +68,7 @@ const dateFormat = {
 		month = month.toLowerCase();
 		month = months.find(str => str === month || str.substring(0, 3) === month);
 		month = months.indexOf(month) + 1;
+		day = day.replace(/[a-z]/ig, '');
 		day = Number(day);
 		year = Number(year);
 		return { day, month, year };
