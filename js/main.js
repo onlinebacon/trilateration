@@ -1,6 +1,7 @@
+import { coordAzDistToPoint } from '../../jslib/sphere-math.js';
+
 import * as Maps from './maps.js';
 import * as FormatAngles from './format-angle.js';
-import { getCoordCircle } from './math.js';
 import CalculationContext from './calculation-context.js';
 
 let inputData;
@@ -16,6 +17,7 @@ let results = [];
 const NM_TO_MI = 1852/1609.344;
 const DEG_TO_RAD = Math.PI/180;
 const RAD_TO_DEG = 180/Math.PI;
+const D360 = Math.PI*2;
 
 const example = `
 
@@ -145,25 +147,117 @@ const makeSpotAt = (lat, long) => {
 	ctx.stroke();
 };
 
-const makeCircle = (lat, long, arc) => {
-	const points = getCoordCircle(lat, long, arc, 128);
+const MIN_DIST = 10;
+
+class CircleNode {
+	constructor(center, azimuth, radius) {
+		const [ lat, lon ] = coordAzDistToPoint(center, azimuth, radius);
+		this.center = center;
+		this.azimuth = azimuth;
+		this.radius = radius;
+		this.view = project(lat, lon);
+		this.next = this;
+		this.prev = this;
+	}
+	addRight(node) {
+		const { next } = this;
+		this.next = node;
+		next.prev = node;
+		node.prev = this;
+		node.next = next;
+		return this;
+	}
+	distTo(node) {
+		const [ ax, ay ] = this.view;
+		const [ bx, by ] = node.view;
+		const dx = bx - ax;
+		const dy = by - ay;
+		return Math.sqrt(dx*dx + dy*dy);
+	}
+	expandRight(maxCalls = 10) {
+		if (maxCalls === 0) return this;
+		if (this.distTo(this.next) <= MIN_DIST) return this;
+		const { center, radius, next } = this;
+		const a = this.azimuth;
+		const b = next.azimuth;
+		const azimuth = (a + b)*0.5;
+		const node = new CircleNode(center, azimuth, radius);
+		this.addRight(node);
+		node.expandRight(maxCalls - 1);
+		this.expandRight(maxCalls - 1);
+		return this;
+	}
+}
+
+const generateList = (lat, lon, arc) => {
+	const center = [ lat, lon ];
+	const a = new CircleNode(center, 0, arc);
+	const b = new CircleNode(center, Math.PI, arc);
+	const c = new CircleNode(center, Math.PI*2, arc);
+	a.addRight(b);
+	b.addRight(c);
+	a.expandRight();
+	b.expandRight();
+	return a;
+};
+
+const splitIfBreaks = (head) => {
+	const max = Math.min(canvas.width, canvas.height)*0.5;
+	let node = head;
+	for (;;) {
+		const { next } = node;
+		if (next === null) {
+			break;
+		}
+		const dist = node.distTo(next);
+		if (dist >= max) {
+			next.prev = null;
+			node.next = null;
+			return next;
+		}
+		node = node.next;
+		if (node === null || node === head) {
+			break;
+		}
+	}
+	return null;
+};
+
+const drawList = (head) => {
+	let node = head;
 	ctx.beginPath();
-	for (let i=0; i<points.length; ++i) {
-		const [ lat, long ] = points[i];
-		const [ x, y ] = project(lat, long);
-		if (i === 0) {
+	ctx.lineWidth = 1;
+	ctx.lineJoin = 'round';
+	for (;;) {
+		const [ x, y ] = node.view;
+		if (node === head) {
 			ctx.moveTo(x, y);
 		} else {
 			ctx.lineTo(x, y);
 		}
+		node = node.next;
+		if (node === head || node === null) {
+			break;
+		}
 	}
-	ctx.closePath();
-	ctx.lineWidth = 0.5;
-	ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
-	ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-	ctx.lineJoin = 'round';
-	ctx.fill();
+	if (node !== null) {
+		ctx.closePath();
+	}
 	ctx.stroke();
+}
+
+const drawCircle = (lat, lon, arc) => {
+	const head = generateList(lat, lon, arc);
+	let next = splitIfBreaks(head);
+	if (next === null) {
+		drawList(head);
+	} else {
+		while (next !== null) {
+			let list = splitIfBreaks(next);
+			drawList(next);
+			next = list;
+		}
+	}
 };
 
 const updateMap = () => currentMap.getImage().then(img => {
@@ -171,7 +265,7 @@ const updateMap = () => currentMap.getImage().then(img => {
 	canvas.height = height;
 	ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 	for (let { gp, arc } of args) {
-		makeCircle(...gp, arc);
+		drawCircle(...gp, arc);
 	}
 	for (let { gp, arc } of args) {
 		makeSpotAt(...gp);
