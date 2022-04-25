@@ -252,6 +252,8 @@ const setters = {
 			throw `Invalid declination "${args[1]}"`;
 		}
 		if (ctx.current.body == null) {
+			ctx.log('');
+			ctx.log(`- Unkown -`);
 			ctx.current.body = { names: [ 'Unkown' ], ra, dec };
 		} else {
 			ctx.current.body = { ...ctx.current.body, ra, dec };
