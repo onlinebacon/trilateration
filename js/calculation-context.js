@@ -252,10 +252,9 @@ const setters = {
 			throw `Invalid declination "${args[1]}"`;
 		}
 		if (ctx.current.body == null) {
-			ctx.current.body = { name: 'Unkown', ra, dec };
+			ctx.current.body = { names: [ 'Unkown' ], ra, dec };
 		} else {
-			ctx.current.body.ra = ra;
-			ctx.current.body.dec = dec;
+			ctx.current.body = { ...ctx.current.body, ra, dec };
 		}
 	},
 	zenith: (ctx, val) => {
