@@ -43,8 +43,10 @@ const clearPaper = () => {
 };
 
 const addPaperLine = (line) => {
-	paper.innerText += line;
-	paper.innerHTML += '<br>';
+	if (line !== '' || paper.innerHTML !== '') {
+		paper.innerText += line;
+		paper.innerHTML += '<br>';
+	}
 };
 
 const mountQuery = (args) => {

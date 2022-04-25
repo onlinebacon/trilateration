@@ -6,40 +6,70 @@ import { calcDist } from '../../jslib/sphere-math.js';
 
 import * as FormatAngle from './format-angle.js';
 
-const TO_RAD = Math.PI/180;
+const STANDARD_REFRACTION = 1;
+
+const toRadians = (degrees) => degrees*(Math.PI/180);
+const toDegrees = (radians) => radians*(180/Math.PI);
 
 const months = [
 	'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september',
 	'october', 'november', 'december',
 ];
 
-const dtToTimestamp = (dt) => {
-	const { year, month, day, hour, min, sec = 0, timezone = '+00:00' } = dt;
-	const values = [ year, month, day, hour, min, sec, timezone ];
-	if (values.includes(undefined)) {
-		return new Date('x');
-	}
-	let str = year.toString().padStart(4, '0');
-	str += '-' + month.toString().padStart(2, '0');
-	str += '-' + day.toString().padStart(2, '0');
-	str += ' ' + hour.toString().padStart(2, '0');
-	str += ':' + min.toString().padStart(2, '0');
-	str += ':' + sec.toFixed(3).padStart(6, '0');
-	str += timezone;
-	return new Date(str);
-};
+const fmtAng = FormatAngle.angle;
+const fmtLat = FormatAngle.lat;
+const fmtLon = FormatAngle.lon;
 
-const dtFormat = {
-	regex: /^\d+-\d+-\d+\s+\d+:\d+:\d+(\.\d+)?\s+((UTC|GMT)\s*)?[+\-]\d+(:\d+)?$/i,
+class DateTime {
+	constructor() {
+		this.year = null;
+		this.month = null;
+		this.day = null;
+		this.hour = null;
+		this.min = null;
+		this.sec = null;
+		this.zone = null;
+	}
+	isMissing() {
+		const attrs = [ 'year', 'month', 'day', 'hour', 'min', 'sec', 'zone' ];
+		const missing = attrs.find(attr => this[attr] == null);
+		if (!missing) return null;
+		if ([ 'year', 'month', 'day' ].includes(missing)) {
+			return 'year, month and day';
+		}
+		return missing;
+	}
+	get timestamp() {
+		const { year, month, day, hour, min, sec, zone } = this;
+		const y = year.toString().padStart(4, '0');
+		const M = month.toString().padStart(2, '0');
+		const d = day.toString().padStart(2, '0');
+		const h = hour.toString().padStart(2, '0');
+		const m = min.toString().padStart(2, '0');
+		const s = sec.toFixed(3).padStart(6, '0');
+		const iso8601 = `${y}-${M}-${d}T${h}:${m}:${s}${zone}`;
+		return new Date(iso8601).getTime();
+	}
+	set(data) {
+		for (const attr in data) {
+			const val = data[attr];
+			if (val != null) this[attr] = val;
+		}
+		return this;
+	}
+}
+
+const zonedDateTimeFormat = {
+	regex: /^\d+-\d+-\d+\s+\d+:\d+:\d+(\.\d+)?(\s*(UTC|GMT)\s*|\s*)[+\-]\s*\d+(:\d+)?$/i,
 	parse: str => {
 		str = str.replace(/\s+/g, '\x20');
 		str = str.replace(/([+\-])\s+/, '$1');
 		str = str.replace(/UTC|GMT/, '')
-		let [ year, month, day, hour, min, sec ] = str.split(/[\-\s:]/).map(Number);
-		let [ timezone ] = str.match(/[+\-]\d+(:\d+)?$/);
-		timezone = timezone.replace(/\d+/g, d => d.padStart(2, '0'));
-		if (!timezone.includes(':')) timezone += ':00';
-		return { year, month, day, hour, min, sec, timezone };
+		const [ year, month, day, hour, min, sec ] = str.split(/[\-\s:]/).map(Number);
+		let [ zone ] = str.match(/[+\-]\s*\d+(:\d+)?$/);
+		zone = zone.replace(/\d+/g, d => d.padStart(2, '0'));
+		if (!zone.includes(':')) zone += ':00';
+		return { year, month, day, hour, min, sec, zone };
 	},
 };
 
@@ -56,7 +86,7 @@ const timeFormat = {
 				hour = 0;
 			}
 		}
-		return { hour, min, ...(sec != null ? {sec} : {}) };
+		return { hour, min, sec };
 	},
 };
 
@@ -78,17 +108,17 @@ const dateFormat = {
 const zoneFormat = {
 	regex: /^(GMT|UTC|((GMT|UTC)\s*)?[+\-]\s*\d+(:\d+)?)$/i,
 	parse: str => {
-		if (/^(GMT|UTC)$/i.test(str)) return { timezone: '+00:00' };
+		if (/^(GMT|UTC)$/i.test(str)) return '+00:00';
 		str = str.replace(/GMT|UTC/i, '');
 		str = str.replace(/\s+/g, ' ');
 		str = str.trim();
-		let timezone = str[0];
+		let zone = str[0];
 		str = str.replace(/[+\-]/, '');
 		let [ hour, min = 0 ] = str.split(':').map(Number);
-		timezone += hour.toString().padStart(2, '0');
-		timezone += ':';
-		timezone += min.toString().padStart(2, '0');
-		return { timezone };
+		zone += hour.toString().padStart(2, '0');
+		zone += ':';
+		zone += min.toString().padStart(2, '0');
+		return zone;
 	},
 };
 
@@ -102,173 +132,228 @@ const heightFormat = {
 	},
 };
 
-const nsRegex = /^[ns]|[ns]$/i;
-const ewRegex = /^[ew]|[ew]$/i;
+const northSouthRegex = /^[NS]|[NS]$/;
+const eastWestRegex = /^[EW]|[EW]$/;
 const parseCoord = (str) => {
+	str = str.toUpperCase();
 	const pair = str.split(/\s*,\s*/);
 	if (pair.length !== 2) return null;
 	let [ lat, lon ] = pair;
-	if (nsRegex.test(lat)) {
-		let [ sign ] = lat.match(nsRegex);
-		lat = lat.replace(nsRegex, '').trim();
-		if (sign.toLowerCase() == 's') lat = '-' + lat;
+	if (northSouthRegex.test(lat)) {
+		const [ sign ] = lat.match(northSouthRegex);
+		lat = lat.replace(northSouthRegex, '').trim();
+		if (sign === 'S') lat = '-' + lat;
 	}
-	if (ewRegex.test(lon)) {
-		let [ sign ] = lon.match(ewRegex);
-		lon = lon.replace(ewRegex, '').trim();
-		if (sign.toLowerCase() == 'w') lon = '-' + lon;
+	if (eastWestRegex.test(lon)) {
+		const [ sign ] = lon.match(eastWestRegex);
+		lon = lon.replace(eastWestRegex, '').trim();
+		if (sign === 'W') lon = '-' + lon;
 	}
 	lat = Angles.parse(lat);
 	if (lat == null) return null;
 	lon = Angles.parse(lon);
 	if (lon == null) return null;
-	return [ lat*TO_RAD, lon*TO_RAD ];
+	return [ lat, lon ].map(toRadians);
 };
 
 const setters = {
-	body: (ctx, val) => {
-		const star = Almanac.lookup(val) ?? val;
-		if (ctx.data.body) ctx.compileSight();
-		ctx.data.body = star;
-		ctx.started = true;
-	},
-	star: (...args) => setters.body(...args),
 	time: (ctx, val) => {
-		const format = [ dtFormat, timeFormat ].find(format => format.regex.test(val));
-		if (!format) throw `Unkown time format "${val}"`;
-		ctx.data.dt = { ...ctx.data.dt, ...format.parse(val) };
+		const format = [ zonedDateTimeFormat, timeFormat ].find(format => format.regex.test(val));
+		if (!format) {
+			throw `Invalid time format "${val}"`;
+		}
+		const data = format.parse(val);
+		const { dt } = ctx.current;
+		dt.set(data);
+		const missing = dt.isMissing();
+		if (missing) {
+			throw `Incomplete date/time information: missing ${missing}`;
+		}
+		const { timestamp } = dt;
+		if (isNaN(timestamp)) {
+			console.log(dt);
+			throw `Invalid time`;
+		}
+		const ghaOfAries = Almanac.getAriesGHAAt(timestamp);
+		ctx.log(`GHA of Aries = ${fmtAng(ghaOfAries)}`);
+		ctx.current.ghaOfAries = ghaOfAries;
 	},
 	date: (ctx, val) => {
-		if (!dateFormat.regex.test(val)) throw `Unkown date format "${val}"`;
-		ctx.data.dt = { ...ctx.data.dt, ...dateFormat.parse(val) };
+		if (!dateFormat.regex.test(val)) {
+			throw `Invalid date format "${val}"`;
+		}
+		const data = dateFormat.parse(val);
+		if (data == null) {
+			throw `Invalid date "${val}"`;
+		}
+		const { dt } = ctx.current;
+		dt.set(data);
+		if (!dt.isMissing() && isNaN(dt.timestamp)) {
+			throw `Invalid date "${val}"`;
+		}
 	},
 	zone: (ctx, val) => {
-		if (!zoneFormat.regex.test(val)) throw `Unkown zone format "${val}"`;
-		ctx.data.dt = { ...ctx.data.dt, ...zoneFormat.parse(val) };
-	},
-	zenith: (ctx, val) => {
-		const zenith = Angles.parse(val);
-		if (zenith == null) throw `Invalid format for zenith angle "${val}"`;
-		ctx.data.zenith = zenith;
-		ctx.compileSight();
-	},
-	alt: (ctx, val) => {
-		const alt = Angles.parse(val);
-		if (alt == null) throw `Invalid format for altitude "${val}"`;
-		ctx.data.alt = alt;
-		ctx.compileSight();
+		if (!zoneFormat.regex.test(val)) {
+			throw `Invalid zone format "${val}"`;
+		}
+		const zone = zoneFormat.parse(val);
+		if (zone == null) {
+			throw `Invalid zone "${val}"`;
+		}
+		ctx.current.dt.set({ zone });
 	},
 	height: (ctx, val) => {
-		if (!heightFormat.regex.test(val)) throw `Invalid format for height "${val}"`;
+		if (!heightFormat.regex.test(val)) {
+			throw `Invalid height format "${val}"`;
+		}
 		const height = heightFormat.parse(val);
-		ctx.data.height = height;
+		if (height == null) {
+			throw `Invalid height "${val}"`;
+		}
+		const dip = Corrections.dip(height);
+		ctx.log(`dip for ${val} = ${fmtAng(dip)}`);
+		ctx.current.dip = dip;
+	},
+	refraction: (ctx, val) => {
+		if (/std|standard/i.test(val)) {
+			ctx.current.refraction = STANDARD_REFRACTION;
+		} else {
+			throw `Invalid refraction format "${val}"`;
+		}
+	},
+	body: (ctx, val) => {
+		if (ctx.current.body != null) {
+			ctx.completeCurrentSight();
+		}
+		const body = Almanac.lookup(val);
+		ctx.log('');
+		if (body == null) {
+			ctx.log(`- ${val} -`);
+			ctx.current.body = { names: [ val ], ra: null, dec: null };
+		} else {
+			ctx.log(`- ${body.names[0]} -`);
+			ctx.current.body = body;
+			const ra = fmtAng(body.ra);
+			const dec = fmtAng(body.dec);
+			ctx.log(`ra/dec (almanac) = ${ra} / ${dec}`);
+		}
+		ctx.current.zenith = null;
 	},
 	'ra/dec': (ctx, val) => {
-		const arr = val.split(/\s*\/\s*/);
-		if (arr.length !== 2) throw `Invalid format for RA/DEC "${val}"`;
-		let [ ra, dec ] = arr.map(Angles.parse);
-		if (ra == null) throw `Invalid format for right ascension "${arr[0]}"`;
-		if (dec == null) throw `Invalid format for declination "${arr[1]}"`;
-		ctx.data.radec = [ ra, dec ];
+		const args = val.split(/\s*\/\s*/);
+		if (args.length !== 2) {
+			throw `Invalid ra/dec format "${val}"`;
+		}
+		const [ ra, dec ] = args.map(Angles.parse);
+		if (ra == null) {
+			throw `Invalid right ascension "${args[0]}"`;
+		}
+		if (dec == null) {
+			throw `Invalid declination "${args[1]}"`;
+		}
+		if (ctx.current.body == null) {
+			ctx.current.body = { name: 'Unkown', ra, dec };
+		} else {
+			ctx.current.body.ra = ra;
+			ctx.current.body.dec = dec;
+		}
 	},
-	ref: (ctx, val) => {
-		val = val.toLowerCase();
-		if (val !== 'standard' && val !== 'std') throw `Invalid format for refraction "${val}"`;
-		ctx.data.refraction = 'standard';
+	zenith: (ctx, val) => {
+		let zenith = Angles.parse(val);
+		if (zenith == null) {
+			throw `Invalid zenith angle "${val}"`;
+		}
+		ctx.log(`zenith = ${fmtAng(zenith)}`);
+		if (ctx.current.refraction === STANDARD_REFRACTION) {
+			const dif = Corrections.refraction(90 - zenith);
+			const corrected = zenith + dif;
+			let msg = 'refraction: ';
+			msg += fmtAng(zenith);
+			msg += ' + ' + fmtAng(dif);
+			msg += ' = ' + fmtAng(corrected);
+			ctx.log(msg);
+			zenith = corrected;
+		}
+		ctx.current.zenith = zenith;
 	},
-	refraction: (...args) => setters.ref(...args),
+	alt: (ctx, val) => {
+		let alt = Angles.parse(val);
+		if (alt == null) {
+			throw `Invalid altitude "${val}"`;
+		}
+		ctx.log(`alt = ${fmtAng(alt)}`);
+		const { dip } = ctx.current;
+		if (dip != null) {
+			const corrected = alt - dip;
+			let msg = 'dip: ';
+			msg += fmtAng(alt);
+			msg += ' - ' + fmtAng(dip);
+			msg += ' = ' + fmtAng(corrected);
+			ctx.log(msg);
+			alt = corrected;
+		}
+		if (ctx.current.refraction === STANDARD_REFRACTION) {
+			const dif = Corrections.refraction(alt);
+			const corrected = alt - dif;
+			let msg = 'refraction: ';
+			msg += fmtAng(alt);
+			msg += ' - ' + fmtAng(dif);
+			msg += ' = ' + fmtAng(corrected);
+			ctx.log(msg);
+			alt = corrected;
+		}
+		const zenith = 90 - alt;
+		let msg = 'zenith: ';
+		msg += fmtAng(90);
+		msg += ' - ' + fmtAng(alt);
+		msg += ' = ' + fmtAng(zenith);
+		ctx.log(msg);
+		ctx.current.zenith = zenith;
+	},
 	compare: (ctx, val) => {
 		const coord = parseCoord(val);
-		if (coord == null) throw `Invalid format for coordinate "${val}"`;
-		ctx.data.compare = coord;
+		if (coord == null) {
+			throw `Invalid coordinates format "${val}"`;
+		}
+		ctx.current.compare = coord;
 	},
 };
 
+const aliases = {
+	'body': [ 'star' ],
+	'ra/dec': [ 'radec' ],
+	'refraction': [ 'ref' ],
+	'height': [ 'dip', 'h' ],
+	'compare': [ 'cmp', 'actual' ],
+};
+
+for (const attr in aliases) {
+	const array = aliases[attr];
+	for (const alias of array) {
+		setters[alias] = setters[attr];
+	}
+}
+
 class CalculationContext {
 	constructor(log) {
-		this.started = false;
-		this.data = {};
-		this.sights = [];
 		this.log = log;
-		this.results = [];
+		this.current = {
+			dt: new DateTime(),
+			ghaOfAries: null,
+			ref: STANDARD_REFRACTION,
+			dip: null,
+			body: null,
+			zenith: null,
+		};
+		this.sights = [];
+		this.results = null;
 	}
 	set(attr, val) {
 		const setter = setters[attr.toLowerCase()];
-		if (!setter) throw `Unkown field "${attr}"`;
+		if (!setter) {
+			throw `Unkown field "${attr}"`;
+		}
 		if (val) setter(this, val);
-	}
-	compileSight() {
-		const { data, log } = this;
-		let { body, radec, dt, alt, height, zenith, refraction, compare } = data;
-		let name;
-		if (typeof body === 'string') {
-			if (!radec) throw `Unkown celestial body "${body}", please provide the RA/DEC`;
-			name = body;
-		} else {
-			let { ra, dec } = body;
-			name = body.names[0];
-			radec = [ ra, dec ];
-		}
-		log?.(`- ${name} -`);
-		let [ ra, dec ] = radec;
-		const sha = 360 - ra;
-		log?.(`SHA = ${FormatAngle.angle(sha)}, dec = ${FormatAngle.angle(dec)}`);
-		const timestamp = dtToTimestamp(dt);
-		if (isNaN(timestamp*1)) throw `Invalid date`;
-		const ariesGHA = Almanac.getAriesGHAAt(timestamp);
-		log?.(`GHA of Aries = ${FormatAngle.angle(ariesGHA)}`);
-		const gha = (ariesGHA + sha)%360;
-		log?.(`GHA of ${name} = ${FormatAngle.angle(gha)}`);
-		let lat = dec;
-		let lon = (360 + 180 - gha)%360 - 180;
-		log?.(`GP = ${FormatAngle.lat(lat)}, ${FormatAngle.lon(lon)}`);
-		if (alt != null) {
-			if (height != null) {
-				const dip = Corrections.dip(height);
-				const corrected = alt - dip;
-				log?.(`dip: ${
-					FormatAngle.angle(alt)
-				} - ${
-					FormatAngle.angle(dip)
-				} = ${
-					FormatAngle.angle(corrected)
-				}`);
-				alt = corrected;
-			}
-			if (refraction === 'standard') {
-				const dif = Corrections.refraction(alt);
-				const corrected = alt - dif;
-				log?.(`refraction: ${
-					FormatAngle.angle(alt)
-				} - ${
-					FormatAngle.angle(dif)
-				} = ${
-					FormatAngle.angle(corrected)
-				}`);
-				alt = corrected;
-			}
-			zenith = 90 - alt;
-			log?.(`zenith = 90° - ${FormatAngle.angle(alt)} = ${FormatAngle.angle(zenith)}`);
-		} else if (zenith != null) {
-			if (refraction === 'standard') {
-				const dif = Corrections.refraction(90 - zenith);
-				const corrected = zenith + dif;
-				log?.(`refraction: ${
-					FormatAngle.angle(zenith)
-				} + ${
-					FormatAngle.angle(dif)
-				} = ${
-					FormatAngle.angle(corrected)
-				}`);
-				zenith = corrected;
-			}
-		} else {
-			throw `Missing alt/zenith for ${name}`;
-		}
-		this.data = { dt, height, refraction, compare };
-		this.started = false;
-		this.sights.push({ gp: [ lat*TO_RAD, lon*TO_RAD ], arc: zenith*TO_RAD });
-		log?.('');
 		return this;
 	}
 	run(line) {
@@ -280,23 +365,48 @@ class CalculationContext {
 		this.set(attr, val);
 		return this;
 	}
+	completeCurrentSight() {
+		const { current } = this;
+		const { dt, ghaOfAries, body, zenith } = current;
+		const { names: [ name ], ra, dec } = body;
+		if (ra == null || dec == null) {
+			throw `Please provide the ra/dec for ${name}`;
+		}
+		const sha = 360 - ra;
+		const gha = (ghaOfAries + sha)%360;
+		const lat = dec;
+		const lon = (360 - gha + 180)%360 - 180;
+		this.log(`SHA of ${name} = ${fmtAng(sha)}`);
+		this.log(`GHA of ${name} = ${fmtAng(gha)}`);
+		this.log(`GP = ${fmtLat(lat)}, ${fmtLon(lon)}`);
+		const gp = [ lat, lon ].map(toRadians);
+		const arc = toRadians(zenith);
+		this.sights.push({ gp, arc });
+		current.body = null;
+		current.zenith = null;
+		return this;
+	}
 	finish() {
-		if (this.started) this.compileSight();
+		const { current } = this;
+		if (current.body) {
+			this.completeCurrentSight();
+		}
 		const results = trilaterate(this.sights.map(({ gp, arc }) => [ ...gp, arc ]));
-		const { compare } = this.data;
 		this.results = results;
+		this.log('');
+		const { compare } = current;
 		for (let i=0; i<results.length; ++i) {
 			let label = 'result';
 			if (results.length > 1) {
 				label = i + 1 + 'º ' + label;
 			}
 			const result = results[i];
-			const [ lat, lon ] = result;
-			const coord = `${ FormatAngle.lat(lat/TO_RAD) }, ${ FormatAngle.lon(lon/TO_RAD) }`;
+			const [ lat, lon ] = result.map(toDegrees);
+			const coord = `${fmtLat(lat)}, ${fmtLon(lon)}`;
 			if (compare) {
-				console.log([...compare, ...result].map(x=>x/TO_RAD));
-				const off = (calcDist(compare, result)*3958.756).toPrecision(2)*1;
-				this.log(`${label} = ${coord} (${off} miles off)`);
+				const dist = calcDist(compare, result);
+				const mi = (dist*3958.8).toPrecision(2)*1;
+				this.log(`${label} = ${coord} (${mi} mi off)`);
 			} else {
 				this.log(`${label} = ${coord}`);
 			}
