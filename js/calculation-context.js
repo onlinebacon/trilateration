@@ -202,6 +202,14 @@ const setters = {
 		}
 		ctx.current.dt.set({ zone });
 	},
+	index: (ctx, val) => {
+		let index = Angles.parse(val);
+		if (index == null) {
+			throw `Invalid index error "${val}"`;
+		}
+		ctx.log(`index = ${fmtAng(index)}`);
+		ctx.current.index = index;
+	},
 	height: (ctx, val) => {
 		if (!heightFormat.regex.test(val)) {
 			throw `Invalid height format "${val}"`;
@@ -244,7 +252,7 @@ const setters = {
 		if (args.length !== 2) {
 			throw `Invalid ra/dec format "${val}"`;
 		}
-		const [ ra, dec ] = args.map(Angles.parse);
+		let [ ra, dec ] = args.map(Angles.parse);
 		if (ra == null) {
 			throw `Invalid right ascension "${args[0]}"`;
 		}
@@ -256,6 +264,7 @@ const setters = {
 			ctx.log(`- Unkown -`);
 			ctx.current.body = { names: [ 'Unkown' ], ra, dec };
 		} else {
+			ra *= 360/24;
 			ctx.current.body = { ...ctx.current.body, ra, dec };
 		}
 	},
@@ -283,7 +292,20 @@ const setters = {
 			throw `Invalid altitude "${val}"`;
 		}
 		ctx.log(`alt = ${fmtAng(alt)}`);
-		const { dip } = ctx.current;
+		const { index, dip } = ctx.current;
+		if (index != null) {
+			const corrected = alt + index;
+			let msg = 'index: ';
+			msg += fmtAng(alt);
+			if (index < 0) {
+				msg += ' - ' + fmtAng(-index);
+			} else {
+				msg += ' + ' + fmtAng(index);
+			}
+			msg += ' = ' + fmtAng(corrected);
+			ctx.log(msg);
+			alt = corrected;
+		}
 		if (dip != null) {
 			const corrected = alt - dip;
 			let msg = 'dip: ';
@@ -368,7 +390,7 @@ class CalculationContext {
 	}
 	completeCurrentSight() {
 		const { current } = this;
-		const { dt, ghaOfAries, body, zenith } = current;
+		const { ghaOfAries, body, zenith } = current;
 		const { names: [ name ], ra, dec } = body;
 		if (ra == null || dec == null) {
 			throw `Please provide the ra/dec for ${name}`;
