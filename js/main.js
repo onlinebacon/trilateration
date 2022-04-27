@@ -221,7 +221,7 @@ const splitIfBreaks = (head) => {
 const drawList = (head) => {
 	let node = head;
 	ctx.beginPath();
-	ctx.lineWidth = 1;
+	ctx.lineWidth = 1.5;
 	ctx.lineJoin = 'round';
 	for (;;) {
 		const [ x, y ] = node.view;

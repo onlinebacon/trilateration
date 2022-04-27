@@ -22,13 +22,13 @@ textarea {
 #paper {
 	background-color: #ba9;
 	color: #642;
-	font-size: 14px;
+	font-size: 12px;
 	font-style: italic;
 	padding: 10px 20px;
 	margin-top: 10px;
 	box-shadow: -5px 5px 20px #000;
 	width: 400px;
-	height: 484px;
+	height: 478px;
 	overflow-y: auto;
 }
 .option {
