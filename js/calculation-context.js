@@ -294,13 +294,13 @@ const setters = {
 		ctx.log(`alt = ${fmtAng(alt)}`);
 		const { index, dip } = ctx.current;
 		if (index != null) {
-			const corrected = alt + index;
+			const corrected = alt - index;
 			let msg = 'index: ';
 			msg += fmtAng(alt);
 			if (index < 0) {
-				msg += ' - ' + fmtAng(-index);
+				msg += ' + ' + fmtAng(-index);
 			} else {
-				msg += ' + ' + fmtAng(index);
+				msg += ' - ' + fmtAng(index);
 			}
 			msg += ' = ' + fmtAng(corrected);
 			ctx.log(msg);
