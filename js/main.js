@@ -142,7 +142,7 @@ const makeSpotAt = (lat, long) => {
 	ctx.stroke();
 };
 
-const MIN_DIST = 10;
+const MIN_DIST = 5;
 
 class CircleNode {
 	constructor(center, azimuth, radius) {
