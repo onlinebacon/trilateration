@@ -21,22 +21,20 @@ const D360 = Math.PI*2;
 
 const example = `
 
-	date: March 28, 2022
-	zone: -5
-	ref: standard
-	height: 1 ft
-
-	star: procyon
-	time: 00:19:51
-	alt: 25.2
-
-	star: polaris
-	time: 00:21:45
-	alt: 45.6
-
-	star: arcturus
-	time: 00:22:33
-	alt: 45.7
+	date: April 24th, 2022
+	zone: GMT-5
+	height: 5 ft
+	index: -1
+	refraction: standard
+	compare: 44.830553, -93.060625
+	
+	star: Arcturus
+	time: 22:40:03
+	alt: 49° 42.6'
+	
+	star: Regulus
+	time: 22:23:39
+	alt: 54° 27.1'
 
 `.trim().replace(/[\t\x20]*\n[\t\x20]*/g, '\n');
 
