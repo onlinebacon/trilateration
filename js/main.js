@@ -14,10 +14,7 @@ let [ currentMap ] = Maps.all;
 
 const args = [];
 let results = [];
-const NM_TO_MI = 1852/1609.344;
-const DEG_TO_RAD = Math.PI/180;
-const RAD_TO_DEG = 180/Math.PI;
-const D360 = Math.PI*2;
+const toDegrees = (rad) => rad*(180/Math.PI);
 
 const example = `
 
@@ -50,13 +47,13 @@ const addPaperLine = (line) => {
 };
 
 const mountQuery = (args) => {
-	let query = 'o=' + results[0].map(v => (v*RAD_TO_DEG).toFixed(5)*1).join(',');
+	let query = 'o=' + results[0].map(v => toDegrees(v).toFixed(5)*1).join(',');
 	let count = 0;
 	for (const { gp, arc } of args) {
 		let name = String.fromCharCode(97 + count++);
 		query += '&' + name + '=';
-		query += gp.map(v => (v*RAD_TO_DEG).toFixed(5)*1).join(',');
-		query += ',' + (arc*RAD_TO_DEG).toFixed(5)*1;
+		query += gp.map(v => toDegrees(v).toFixed(5)*1).join(',');
+		query += ',' + toDegrees(arc).toFixed(5)*1;
 	}
 	return query.substring(0, query.length - 1);
 };
