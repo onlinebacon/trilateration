@@ -21,17 +21,17 @@ const example = `
 	date: April 24th, 2022
 	zone: GMT-5
 	height: 5 ft
-	index: -1
+	index: 2'
 	refraction: standard
 	compare: 44.830553, -93.060625
 	
 	star: Arcturus
 	time: 22:40:03
-	alt: 49° 42.6'
+	alt: 48° 44.6'
 	
 	star: Regulus
 	time: 22:23:39
-	alt: 54° 27.1'
+	alt: 53° 29.1'
 
 `.trim().replace(/[\t\x20]*\n[\t\x20]*/g, '\n');
 
