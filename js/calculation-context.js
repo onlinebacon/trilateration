@@ -3,6 +3,7 @@ import * as Almanac from '../../jslib/almanac-2022.js';
 import * as Corrections from '../../jslib/cel-nav-corrections.js';
 import { trilaterate } from '../../jslib/sphere-trilateration.js';
 import { calcDist } from '../../jslib/sphere-math.js';
+import { azimuthAltSearch } from './azimuth-alt-search.js';
 
 import * as FormatAngle from './format-angle.js';
 
@@ -123,7 +124,7 @@ const zoneFormat = {
 };
 
 const heightFormat = {
-	regex: /\d+(\.\d+)?\s*(m|ft)/i,
+	regex: /^\d+(\.\d+)?\s*(m|ft)$/i,
 	parse: str => {
 		let [ unit ] = str.match(/[a-z]+$/g);
 		let val = Number(str.replace(/[^\d\.]/g, '').trim());
@@ -171,7 +172,6 @@ const setters = {
 		}
 		const { timestamp } = dt;
 		if (isNaN(timestamp)) {
-			console.log(dt);
 			throw `Invalid time`;
 		}
 		const ghaOfAries = Almanac.getAriesGHAAt(timestamp);
@@ -268,6 +268,14 @@ const setters = {
 			ctx.current.body = { ...ctx.current.body, ra, dec };
 		}
 	},
+	azimuth: (ctx, val) => {
+		let azimuth = Angles.parse(val);
+		if (azimuth == null) {
+			throw `Invalid azimuth "${val}"`;
+		}
+		ctx.log(`azimuth = ${fmtAng(azimuth)}`);
+		ctx.current.azimuth = azimuth;
+	},
 	zenith: (ctx, val) => {
 		let zenith = Angles.parse(val);
 		if (zenith == null) {
@@ -346,8 +354,9 @@ const aliases = {
 	'body': [ 'star' ],
 	'ra/dec': [ 'radec' ],
 	'refraction': [ 'ref' ],
-	'height': [ 'dip', 'h' ],
+	'height': [ 'dip', 'h', 'height of eye', 'eye height' ],
 	'compare': [ 'cmp', 'actual' ],
+	'azimuth': [ 'az' ],
 };
 
 for (const attr in aliases) {
@@ -390,7 +399,7 @@ class CalculationContext {
 	}
 	completeCurrentSight() {
 		const { current } = this;
-		const { ghaOfAries, body, zenith } = current;
+		const { ghaOfAries, body, zenith, azimuth } = current;
 		const { names: [ name ], ra, dec } = body;
 		if (ra == null || dec == null) {
 			throw `Please provide the ra/dec for ${name}`;
@@ -403,10 +412,14 @@ class CalculationContext {
 		this.log(`GHA of ${name} = ${fmtAng(gha)}`);
 		this.log(`GP = ${fmtLat(lat)}, ${fmtLon(lon)}`);
 		const gp = [ lat, lon ].map(toRadians);
-		const arc = toRadians(zenith);
-		this.sights.push({ gp, arc });
+		this.sights.push({
+			gp,
+			arc: zenith != null ? toRadians(zenith) : null,
+			az: azimuth != null ? toRadians(azimuth) : null,
+		});
 		current.body = null;
 		current.zenith = null;
+		current.azimuth = null;
 		return this;
 	}
 	finish() {
@@ -414,7 +427,12 @@ class CalculationContext {
 		if (current.body) {
 			this.completeCurrentSight();
 		}
-		const results = trilaterate(this.sights.map(({ gp, arc }) => [ ...gp, arc ]));
+		let results = null;
+		if (this.sights.find(sight => sight.az != null)) {
+			results = azimuthAltSearch(this.sights);
+		} else {
+			results = trilaterate(this.sights.map(({ gp, arc }) => [ ...gp, arc ]));
+		}
 		this.results = results;
 		this.log('');
 		const { compare } = current;
