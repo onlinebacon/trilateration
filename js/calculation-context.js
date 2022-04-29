@@ -379,6 +379,7 @@ class CalculationContext {
 		};
 		this.sights = [];
 		this.results = null;
+		this.error = null;
 	}
 	set(attr, val) {
 		const setter = setters[attr.toLowerCase()];
@@ -436,6 +437,7 @@ class CalculationContext {
 		this.results = results;
 		this.log('');
 		const { compare } = current;
+		let error = null;
 		for (let i=0; i<results.length; ++i) {
 			let label = 'result';
 			if (results.length > 1) {
@@ -448,10 +450,14 @@ class CalculationContext {
 				const dist = calcDist(compare, result);
 				const mi = (dist*3958.8).toPrecision(2)*1;
 				this.log(`${label} = ${coord} (${mi} mi off)`);
+				if (error === null || mi < error) {
+					error = mi;
+				}
 			} else {
 				this.log(`${label} = ${coord}`);
 			}
 		}
+		this.error = error;
 		return this;
 	}
 }
