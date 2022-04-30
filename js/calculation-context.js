@@ -264,7 +264,6 @@ const setters = {
 			ctx.log(`- Unkown -`);
 			ctx.current.body = { names: [ 'Unkown' ], ra, dec };
 		} else {
-			ra *= 360/24;
 			ctx.current.body = { ...ctx.current.body, ra, dec };
 		}
 	},
